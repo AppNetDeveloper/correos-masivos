@@ -19,3 +19,8 @@ wget https://github.com/PHPMailer/PHPMailer/archive/master.zip </br>
 unzip master.zip</br>
 mv PHPMailer-master phpmailer
 
+
+Demo:
+
+https://www.appnet.dev/correos-masivos-gratis.php
+
