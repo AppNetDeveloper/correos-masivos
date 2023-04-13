@@ -10,71 +10,72 @@ use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 use PHPMailer\PHPMailer\SMTP;
 
-									
+// Obtener los datos del formulario
+$list = $_POST["emaillist"] ?? '';
+$asunto = $_POST["asunto"] ?? '';
+$mensaje_html = $_POST["contenido"] ?? '';
+$email = $_POST["email"] ?? '';
+$user = $_POST["user"] ?? '';
+$smtp = $_POST["smtp"] ?? '';
+$password = $_POST["password"] ?? '';
 
-$list=$_POST["emaillist"];
-$asunto = $_POST["asunto"];
-$mesajehtml=$_POST["contenido"];
-$email=$_POST["email"];
-$user=$_POST["user"];
-$smtp=$_POST["smtp"];
+// Verificar que los campos necesarios están llenos
+if (empty($list) || empty($asunto) || empty($mensaje_html) || empty($email) || empty($user) || empty($smtp) || empty($password)) {
+    die('Falta completar alguno de los campos necesarios');
+}
 
-$password=$_POST["password"];
+// Verificar que la lista de correos electrónicos tiene un formato válido
+if (!filter_var($list, FILTER_VALIDATE_EMAIL) && !preg_match('/^[\w\.\-\+\@]+\;[\w\.\-\+\@]+(\;[\w\.\-\+\@]+)*$/', $list)) {
+    die('La lista de correos electrónicos tiene un formato inválido');
+}
 
-$mesajenonhtml= $mesajehtml;
-
-
+// Crear un objeto PHPMailer
 $mail = new PHPMailer(true);
 
 try {
-    
-    //Server settings
-    //$mail->SMTPDebug = SMTP::DEBUG_SERVER;                      // Enable verbose debug output
-     $mail->SMTPDebug = false;
-    $mail->isSMTP();                                            // Send using SMTP
-    $mail->Host       = $smtp;                    // Set the SMTP server to send through
-    $mail->SMTPAuth   = true;                                   // Enable SMTP authentication
-    $mail->Username   = $user;                     // SMTP username
-    $mail->Password   = $password;                               // SMTP password
-    //$mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;         // Enable TLS encryption; `PHPMailer::ENCRYPTION_SMTPS` also accepted
-                                        // TCP port to connect to
+    // Configurar el objeto PHPMailer
+    $mail->isSMTP();
+    $mail->SMTPDebug = SMTP::DEBUG_OFF;
+    $mail->Host = $smtp;
+    $mail->SMTPAuth = true;
+    $mail->Username = $user;
+    $mail->Password = $password;
     $mail->SMTPSecure = false;
     $mail->SMTPAutoTLS = false;
-    $mail->Port       = "25";
-  
-      //Set SMTP Options
-      $mail->SMTPAuth = true;
-      
-  $mail->SMTPOptions = array(
-                  'ssl' => array(
-                      'verify_peer' => false,
-                      'verify_peer_name' => false,
-                      'allow_self_signed' => true
-                  )
-              );
+    $mail->Port = 25;
+    $mail->SMTPOptions = [
+        'ssl' => [
+            'verify_peer' => false,
+            'verify_peer_name' => false,
+            'allow_self_signed' => true,
+        ],
+    ];
     
-    //Recipients
-    $mail->setFrom($email, $asunto);
-
-
+    // Agregar los destinatarios
     $addresses = explode(';', $list);
-foreach ($addresses as $value) {
-    $mail->addAddress($value);
-}
+    foreach ($addresses as $value) {
+        if (filter_var(trim($value), FILTER_VALIDATE_EMAIL)) {
+            $mail->addAddress(trim($value));
+        }
+    }
     
-
-
-    // Content
-    $mail->isHTML(true);                                  
-    // Set email format to HTML
+    // Configurar el contenido del mensaje
+    $mail->setFrom($email, $asunto);
+    $mail->isHTML(true);
     $mail->Subject = $asunto;
-    $mail->Body    = $mesajehtml;
-    $mail->AltBody = $mesajenonhtml;
 
-    $mail->send();
-    echo 'Message has been sent';
+    // Enviar el correo electrónico
+    $mail->Body = $mensaje_html;
+    if(!$mail->send()) {
+        // Si el correo no se envía con el puerto 25, intenta enviarlo con el puerto 465
+        $mail->Port = 465;
+        if(!$mail->send()) {
+            throw new Exception('Error al enviar el correo electrónico: ' . $mail->ErrorInfo);
+        }
+    }
+
+    echo 'Correo enviado correctamente';
+
 } catch (Exception $e) {
-    echo "Message could not be sent. Mailer Error: {$mail->ErrorInfo}";
-    
+    echo 'Error al enviar el correo electrónico: ' . $e->getMessage();
 }
- 
